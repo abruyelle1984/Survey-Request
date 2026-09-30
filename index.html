@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#E0157A">
+<title>Survey Requests</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Semi+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+/* ====== CONFIGURATION: paste your Supabase project values here ====== */
+window.APP_CONFIG = {
+  SUPABASE_URL: "https://YOUR-PROJECT.supabase.co",
+  SUPABASE_ANON_KEY: "YOUR-ANON-PUBLIC-KEY",
+  PROJECT_NAME: "Potomac River Tunnel S1405"
+};
+</script>
+<style>
+:root{
+  --bg:#E9ECEA; --surface:#FFFFFF; --surface-2:#F5F7F6; --ink:#1B2328; --muted:#5C676D; --line:#C9D0D1;
+  --flag:#E0157A; --flag-ink:#FFFFFF; --focus:#1F6FD1;
+  --s-req:#4B5B8C; --s-info:#B7791F; --s-acc:#1F6FD1; --s-sch:#0E7C86; --s-done:#6A4FB3; --s-ok:#2E7D32; --s-no:#8A8F93; --s-late:#C62828;
+  --radius-sm:4px; --radius:8px;
+  --font-ui:"Barlow Semi Condensed","Arial Narrow","Roboto Condensed",Arial,sans-serif;
+  --font-body:"Barlow","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){ :root:not([data-theme="light"]){
+  --bg:#12171A; --surface:#1B2226; --surface-2:#222A2F; --ink:#E7ECEE; --muted:#9AA6AC; --line:#33404A;
+  --flag:#FF3D98; --focus:#6EA8FF;
+  --s-req:#8E9CD6; --s-info:#E0A845; --s-acc:#6EA8FF; --s-sch:#3FC1C9; --s-done:#A68CF0; --s-ok:#66BB6A; --s-no:#8A969C; --s-late:#EF5350;
+}}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.5 var(--font-body)}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+[hidden]{display:none!important}
+.wrap{max-width:1100px;margin:0 auto;padding:0 16px}
+
+/* auth */
+.auth{min-height:100vh;display:grid;place-items:center;padding:24px}
+.auth .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:28px;width:min(400px,100%)}
+.auth h1{font:700 1.7rem/1.1 var(--font-ui);margin:14px 0 4px}
+.auth p.sub{color:var(--muted);margin:0 0 20px;font:500 1rem var(--font-ui)}
+.linkbtn{background:none;border:0;color:var(--focus);cursor:pointer;padding:0;text-decoration:underline;font-size:.95rem}
+
+header.top{background:var(--surface);border-bottom:1px solid var(--line);position:sticky;top:env(safe-area-inset-top,0px);z-index:5}
+.top .wrap{display:flex;align-items:center;gap:12px 16px;min-height:64px;flex-wrap:wrap;padding-top:8px;padding-bottom:8px}
+.brand{display:flex;align-items:center;gap:12px;margin-right:auto}
+.stake{width:10px;height:40px;background:var(--flag);border-radius:2px;position:relative;flex:none}
+.stake::after{content:"";position:absolute;left:3px;bottom:-8px;border:2px solid transparent;border-top:8px solid var(--flag)}
+.brand h1{font:700 1.5rem/1 var(--font-ui);margin:0;letter-spacing:.01em}
+.brand p{margin:2px 0 0;color:var(--muted);font:500 .9rem/1.2 var(--font-ui)}
+nav.tabs{display:flex;gap:4px}
+.tab{background:none;border:0;padding:8px 12px;border-radius:var(--radius-sm);font:600 1rem var(--font-ui);color:var(--muted);cursor:pointer}
+.tab[aria-selected="true"]{color:var(--ink);box-shadow:inset 0 -3px 0 var(--flag)}
+.me{display:flex;align-items:center;gap:8px;background:none;border:1px solid var(--line);border-radius:999px;padding:4px 12px 4px 4px;cursor:pointer;font:600 .95rem var(--font-ui)}
+.av{width:28px;height:28px;border-radius:50%;background:var(--ink);color:var(--bg);display:grid;place-items:center;font:700 .8rem var(--font-ui)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:1px solid var(--line);background:var(--surface);padding:8px 14px;border-radius:var(--radius-sm);font:600 1rem var(--font-ui);cursor:pointer}
+.btn:hover{background:var(--surface-2)}
+.btn.primary{background:var(--flag);border-color:var(--flag);color:var(--flag-ink)}
+.btn.primary:hover{filter:brightness(1.07)}
+.btn.danger{color:var(--s-late);border-color:color-mix(in srgb,var(--s-late) 45%,var(--line))}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn.block{width:100%}
+
+.notice{margin:16px 0;padding:12px 14px;border-left:4px solid var(--s-info);background:var(--surface);border-radius:var(--radius-sm)}
+
+.toolbar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:20px 0 12px}
+.filters{display:flex;gap:6px;flex-wrap:wrap}
+.chip{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:4px 12px;font:600 .95rem var(--font-ui);cursor:pointer;color:var(--muted)}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.chip .n{opacity:.7;margin-left:4px}
+.search{margin-left:auto;min-width:220px;flex:0 1 280px;padding:8px 12px;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--surface)}
+
+.list{display:flex;flex-direction:column;gap:8px;margin-bottom:40px}
+.row{display:grid;grid-template-columns:8px minmax(0,1fr) auto;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-sm);cursor:pointer;text-align:left;padding:0;width:100%}
+.row:hover{border-color:var(--muted)}
+.row .flag{background:var(--line);border-radius:3px 0 0 3px}
+.row.urgent .flag{background:var(--flag)}
+.row .main{padding:10px 14px;min-width:0}
+.row .l1{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+.num{font:700 1rem var(--font-ui);letter-spacing:.02em}
+.row .title{font:600 1.05rem var(--font-ui)}
+.row .l2{color:var(--muted);font-size:.92rem;display:flex;gap:14px;flex-wrap:wrap;margin-top:2px}
+.row .side{padding:10px 14px;display:flex;flex-direction:column;align-items:flex-end;justify-content:center;gap:4px;white-space:nowrap}
+.due{font:600 .95rem var(--font-ui)}
+.late{color:var(--s-late)}
+.status{display:inline-flex;align-items:center;gap:6px;font:600 .9rem var(--font-ui);color:var(--st)}
+.status::before{content:"";width:9px;height:9px;border-radius:50%;background:var(--st)}
+.empty{padding:40px 20px;text-align:center;color:var(--muted);background:var(--surface);border:1px dashed var(--line);border-radius:var(--radius)}
+.empty strong{display:block;color:var(--ink);font:600 1.15rem var(--font-ui);margin-bottom:4px}
+
+.dash{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));margin:20px 0 40px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:16px}
+.panel h2{font:600 1.1rem var(--font-ui);margin:0 0 12px}
+.kpi{display:flex;justify-content:space-between;align-items:baseline;padding:6px 0;border-bottom:1px solid var(--line)}
+.kpi:last-child{border-bottom:0}
+.kpi b{font:700 1.4rem var(--font-ui)}
+.kpi span{color:var(--muted)}
+.bar{display:grid;grid-template-columns:minmax(90px,40%) 1fr 36px;gap:8px;align-items:center;font-size:.92rem;margin:6px 0}
+.bar .track{height:10px;background:var(--surface-2);border-radius:5px;overflow:hidden}
+.bar .fill{display:block;height:100%;background:var(--ink)}
+.bar .v{text-align:right;font:600 .95rem var(--font-ui)}
+.dash .wide{grid-column:1/-1}
+
+.users{width:100%;border-collapse:collapse;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius)}
+.users th,.users td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:middle}
+.users th{font:600 .95rem var(--font-ui);color:var(--muted)}
+.tablewrap{overflow-x:auto;margin:20px 0 40px}
+
+dialog{border:0;padding:0;border-radius:var(--radius);background:var(--surface);color:var(--ink);width:min(720px,calc(100vw - 24px));max-height:calc(100dvh - 24px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px))}
+dialog::backdrop{background:rgba(10,14,16,.55)}
+.dlg{display:flex;flex-direction:column;max-height:inherit}
+.dlg-head{display:flex;align-items:center;gap:12px;padding:14px 18px;border-bottom:1px solid var(--line)}
+.dlg-head h2{font:700 1.3rem var(--font-ui);margin:0;margin-right:auto}
+.dlg-body{padding:18px;overflow:auto}
+.dlg-foot{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;padding:12px 18px;border-top:1px solid var(--line);background:var(--surface-2)}
+.x{background:none;border:0;font-size:1.5rem;line-height:1;cursor:pointer;color:var(--muted);padding:4px 8px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px 16px}
+@media (max-width:560px){.grid2{grid-template-columns:1fr} .row{grid-template-columns:8px 1fr} .row .side{grid-column:2;flex-direction:row;justify-content:space-between;padding-top:0} .me .nm{display:none}}
+label.f{display:flex;flex-direction:column;gap:4px;font:600 .95rem var(--font-ui)}
+label.f .hint{font:400 .85rem var(--font-body);color:var(--muted)}
+.full{grid-column:1/-1}
+.in{padding:8px 10px;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--surface);font:400 1rem var(--font-body);width:100%}
+textarea.in{min-height:80px;resize:vertical}
+.req::after{content:" *";color:var(--flag)}
+.err{color:var(--s-late);font-size:.9rem;margin-top:8px;min-height:1em}
+.ok{color:var(--s-ok);font-size:.9rem;margin-top:8px}
+dl.facts{display:grid;grid-template-columns:max-content 1fr;gap:6px 16px;margin:0 0 16px}
+dl.facts dt{color:var(--muted);font:500 .95rem var(--font-ui)}
+dl.facts dd{margin:0;overflow-wrap:anywhere}
+.sec{font:600 1.05rem var(--font-ui);margin:18px 0 8px;padding-top:12px;border-top:1px solid var(--line)}
+.hist{list-style:none;margin:0;padding:0}
+.hist li{display:grid;grid-template-columns:max-content 1fr;gap:10px;padding:6px 0;border-bottom:1px dashed var(--line);font-size:.93rem}
+.hist time{color:var(--muted);font:500 .9rem var(--font-ui)}
+.sigbox{border:1px solid var(--line);border-radius:var(--radius-sm);background:#fff;touch-action:none;width:100%;height:160px;display:block}
+.sigimg{background:#fff;border:1px solid var(--line);border-radius:var(--radius-sm);max-width:280px;width:100%}
+.stack{display:flex;flex-direction:column;gap:12px}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:var(--radius-sm);font:600 1rem var(--font-ui);z-index:50;max-width:calc(100vw - 32px)}
+.menu{position:absolute;right:16px;top:60px;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);min-width:220px;padding:6px;z-index:10;box-shadow:0 8px 24px rgba(0,0,0,.18)}
+.menu .who{padding:8px 10px;border-bottom:1px solid var(--line);margin-bottom:4px}
+.menu .who small{display:block;color:var(--muted)}
+.menu button{display:block;width:100%;text-align:left;background:none;border:0;padding:8px 10px;border-radius:var(--radius-sm);cursor:pointer;font:500 1rem var(--font-ui)}
+.menu button:hover{background:var(--surface-2)}
+@media (prefers-reduced-motion:no-preference){ dialog[open]{animation:pop .14s ease-out} @keyframes pop{from{transform:translateY(8px);opacity:0}to{transform:none;opacity:1}} }
+</style>
+</head>
+<body>
+
+<!-- ============ AUTH ============ -->
+<section class="auth" id="auth" hidden>
+  <div class="card">
+    <div class="stake" aria-hidden="true"></div>
+    <h1>Survey Requests</h1>
+    <p class="sub" id="authSub"></p>
+    <div id="authBody"></div>
+  </div>
+</section>
+
+<!-- ============ APP ============ -->
+<div id="app" hidden>
+<header class="top">
+  <div class="wrap">
+    <div class="brand">
+      <div class="stake" aria-hidden="true"></div>
+      <div><h1>Survey Requests</h1><p id="projName"></p></div>
+    </div>
+    <nav class="tabs" role="tablist">
+      <button class="tab" role="tab" aria-selected="true" data-view="list">Requests</button>
+      <button class="tab" role="tab" aria-selected="false" data-view="dash">Dashboard</button>
+      <button class="tab" role="tab" aria-selected="false" data-view="users" id="usersTab" hidden>Users</button>
+    </nav>
+    <button class="btn primary" id="newBtn">+ New request</button>
+    <button class="me" id="meBtn" aria-haspopup="true"><span class="av" id="meAv"></span><span class="nm" id="meName"></span></button>
+  </div>
+  <div class="menu" id="menu" hidden>
+    <div class="who"><b id="menuName"></b><small id="menuRole"></small></div>
+    <button id="profileBtn">My profile</button>
+    <button id="pwBtn">Change password</button>
+    <button id="logoutBtn">Sign out</button>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="notice" id="notice" hidden></div>
+  <section id="view-list">
+    <div class="toolbar">
+      <div class="filters" id="filters"></div>
+      <input class="search" id="search" type="search" placeholder="Search number, area, drawing, person" aria-label="Search requests">
+    </div>
+    <div class="list" id="list"></div>
+  </section>
+  <section id="view-dash" hidden><div class="dash" id="dash"></div></section>
+  <section id="view-users" hidden>
+    <div class="notice">To add someone, invite them from Supabase: <b>Authentication › Users › Invite user</b>. They receive an email, set their password, and appear here as a requester. Then give them the right role.</div>
+    <div class="tablewrap"><table class="users" id="usersTable"></table></div>
+  </section>
+</main>
+</div>
+
+<dialog id="dlg"><div class="dlg" id="dlgInner"></div></dialog>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(() => {
+const CFG = window.APP_CONFIG;
+const STATUS = {
+  requested:  {label:"Requested", c:"--s-req"},
+  info_needed:{label:"Info needed", c:"--s-info"},
+  accepted:   {label:"Accepted", c:"--s-acc"},
+  scheduled:  {label:"Scheduled", c:"--s-sch"},
+  completed:  {label:"Done, awaiting sign-off", c:"--s-done"},
+  signed_off: {label:"Signed off", c:"--s-ok"},
+  rejected:   {label:"Rejected", c:"--s-no"},
+  cancelled:  {label:"Cancelled", c:"--s-no"}
+};
+const ROLES = {admin:"Admin (survey lead)", surveyor:"Surveyor", requester:"Requester"};
+const OPEN = ["requested","info_needed","accepted","scheduled","completed"];
+const WORK_TYPES = ["Stakeout / layout","Check survey","As-built survey","Topographic survey","Monitoring reading","Control point transfer","Other"];
+const REJECT_REASONS = ["Drawing revision not current","Drawing not georeferenced","Missing information","Lead time too short","Duplicate request","Not a survey task","Other"];
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const today = () => { const d=new Date(); d.setMinutes(d.getMinutes()-d.getTimezoneOffset()); return d.toISOString().slice(0,10); };
+const fmtDate = d => d ? new Date(String(d).length===10 ? d+"T12:00:00" : d).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}) : "";
+const fmtDT = d => d ? new Date(d).toLocaleString("en-US",{month:"short",day:"numeric",year:"numeric",hour:"numeric",minute:"2-digit"}) : "";
+function toast(m){ const t=$("#toast"); t.textContent=m; t.hidden=false; clearTimeout(toast._t); toast._t=setTimeout(()=>t.hidden=true,3000); }
+function notice(m){ const n=$("#notice"); n.hidden=!m; n.textContent=m||""; }
+const initials = n => (n||"?").split(/\s+/).filter(Boolean).slice(0,2).map(w=>w[0].toUpperCase()).join("");
+
+if(!window.supabase || CFG.SUPABASE_URL.includes("YOUR-PROJECT")){
+  document.body.innerHTML = `<div class="auth"><div class="card"><h1>Setup needed</h1><p>Open <b>index.html</b> and paste your Supabase URL and anon key into <code>APP_CONFIG</code>. See README.md.</p></div></div>`;
+  return;
+}
+const hashType = new URLSearchParams(location.hash.slice(1)).get("type");
+const sb = window.supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_ANON_KEY, {auth:{persistSession:true, autoRefreshToken:true, detectSessionInUrl:true}});
+
+let me=null, profiles={}, tickets=[], filter="open", query="", openId=null, channel=null, started=false;
+const isTeam = () => me && (me.role==="admin"||me.role==="surveyor");
+const name = id => (profiles[id] && profiles[id].full_name) || "Unknown user";
+const person = id => { const p=profiles[id]; return p ? p.full_name + (p.company? ", "+p.company : "") : "Unknown user"; };
+
+/* ================= AUTH ================= */
+function authScreen(sub, html, bind){ $("#app").hidden=true; $("#auth").hidden=false; $("#authSub").textContent=sub; $("#authBody").innerHTML=html; bind&&bind(); }
+function showLogin(msg=""){
+  authScreen(CFG.PROJECT_NAME, `<div class="stack">
+    <label class="f"><span>Email</span><input class="in" id="em" type="email" autocomplete="username"></label>
+    <label class="f"><span>Password</span><input class="in" id="pw" type="password" autocomplete="current-password"></label>
+    <button class="btn primary block" id="go">Sign in</button>
+    <div class="err" id="aerr">${esc(msg)}</div>
+    <button class="linkbtn" id="forgot">Forgot your password?</button></div>`, ()=>{
+    const go=async()=>{ $("#aerr").textContent=""; $("#go").disabled=true;
+      const {error}=await sb.auth.signInWithPassword({email:$("#em").value.trim(),password:$("#pw").value});
+      $("#go").disabled=false; if(error) $("#aerr").textContent="Wrong email or password."; };
+    $("#go").onclick=go; $("#pw").onkeydown=e=>{ if(e.key==="Enter") go(); };
+    $("#forgot").onclick=showForgot;
+  });
+}
+function showForgot(){
+  authScreen("Reset your password", `<div class="stack">
+    <label class="f"><span>Email</span><input class="in" id="em" type="email"></label>
+    <button class="btn primary block" id="go">Email me a reset link</button>
+    <div id="amsg" class="err"></div><button class="linkbtn" id="back">Back to sign in</button></div>`, ()=>{
+    $("#back").onclick=()=>showLogin();
+    $("#go").onclick=async()=>{ const {error}=await sb.auth.resetPasswordForEmail($("#em").value.trim(),{redirectTo:location.origin+location.pathname});
+      $("#amsg").className=error?"err":"ok"; $("#amsg").textContent=error?"The link could not be sent. Check the address.":"Check your inbox for the reset link."; };
+  });
+}
+function showSetPassword(first){
+  authScreen(first?"Welcome. Choose a password to finish setting up your account.":"Choose a new password.", `<div class="stack">
+    ${first?`<label class="f"><span class="req">Your full name</span><input class="in" id="fn"></label><label class="f"><span>Company / role</span><input class="in" id="co"></label>`:""}
+    <label class="f"><span class="req">New password</span><input class="in" id="p1" type="password" autocomplete="new-password"><span class="hint">At least 8 characters.</span></label>
+    <label class="f"><span class="req">Repeat password</span><input class="in" id="p2" type="password" autocomplete="new-password"></label>
+    <button class="btn primary block" id="go">Save password</button><div class="err" id="aerr"></div></div>`, ()=>{
+    $("#go").onclick=async()=>{
+      const p1=$("#p1").value, p2=$("#p2").value;
+      if(p1.length<8) return $("#aerr").textContent="Use at least 8 characters.";
+      if(p1!==p2) return $("#aerr").textContent="The two passwords differ.";
+      if(first && !$("#fn").value.trim()) return $("#aerr").textContent="Enter your full name.";
+      const {error}=await sb.auth.updateUser({password:p1});
+      if(error) return $("#aerr").textContent=error.message;
+      if(first){ await sb.rpc("update_my_profile",{p_full_name:$("#fn").value.trim(),p_company:$("#co").value.trim()}); }
+      history.replaceState(null,"",location.pathname); startApp(true);
+    };
+  });
+}
+
+sb.auth.onAuthStateChange((ev,session)=>{
+  if(ev==="PASSWORD_RECOVERY") return showSetPassword(false);
+  if(ev==="SIGNED_OUT"){ started=false; if(channel){sb.removeChannel(channel);channel=null;} return showLogin(); }
+  if(ev==="SIGNED_IN" && session && !started && hashType!=="invite" && hashType!=="recovery") startApp();
+});
+(async()=>{
+  const {data:{session}}=await sb.auth.getSession();
+  if(!session) return showLogin();
+  if(hashType==="invite") return showSetPassword(true);
+  if(hashType==="recovery") return showSetPassword(false);
+  startApp();
+})();
+
+/* ================= DATA ================= */
+async function loadProfiles(){ const {data}=await sb.from("profiles").select("*").order("full_name"); profiles={}; (data||[]).forEach(p=>profiles[p.id]=p); }
+async function loadTickets(){ const {data,error}=await sb.from("tickets").select("*").order("created_at",{ascending:false}).limit(2000); if(error){ notice("Requests could not be loaded. Check your connection."); return; } tickets=data||[]; }
+async function startApp(force){
+  if(started && !force) return; started=true;
+  const {data:{user}}=await sb.auth.getUser(); if(!user) return showLogin();
+  await loadProfiles(); me=profiles[user.id];
+  if(!me || !me.active){ await sb.auth.signOut(); return showLogin("Your account is not active. Contact the survey lead."); }
+  $("#auth").hidden=true; $("#app").hidden=false;
+  $("#projName").textContent=CFG.PROJECT_NAME; paintMe();
+  $("#usersTab").hidden = me.role!=="admin";
+  await loadTickets(); renderList();
+  subscribe();
+}
+function paintMe(){ $("#meAv").textContent=initials(me.full_name); $("#meName").textContent=me.full_name; $("#menuName").textContent=me.full_name; $("#menuRole").textContent=ROLES[me.role]+(me.company?" · "+me.company:""); }
+let reloadT=null;
+function subscribe(){
+  if(channel) sb.removeChannel(channel);
+  channel=sb.channel("live")
+   .on("postgres_changes",{event:"*",schema:"public",table:"tickets"},()=>{ clearTimeout(reloadT); reloadT=setTimeout(async()=>{ await loadTickets(); refresh(); },300); })
+   .on("postgres_changes",{event:"INSERT",schema:"public",table:"ticket_events"},p=>{ if(openId && p.new.ticket_id===openId && isDetailOpen()) openDetail(openId); })
+   .on("postgres_changes",{event:"*",schema:"public",table:"profiles"},async()=>{ await loadProfiles(); me=profiles[me.id]||me; paintMe(); if(!$("#view-users").hidden) renderUsers(); })
+   .subscribe();
+}
+document.addEventListener("visibilitychange",async()=>{ if(!document.hidden && started){ await loadTickets(); refresh(); } });
+function refresh(){ renderList(); if(!$("#view-dash").hidden) renderDash(); }
+async function rpc(fn,args){ const {data,error}=await sb.rpc(fn,args); if(error) throw new Error(error.message||"The change was not saved."); return data; }
+
+/* ================= LIST ================= */
+function isLate(t){ return ["requested","info_needed","accepted","scheduled"].includes(t.status) && (t.scheduled_date||t.due_date) < today(); }
+function isShort(t){ const due=new Date(t.due_date+"T23:59:59"); return (due-new Date(t.created_at)) < 36*3600*1000; }
+function statusHtml(s){ const st=STATUS[s]; return `<span class="status" style="--st:var(${st.c})">${st.label}</span>`; }
+const mine = t => t.requester_id===me.id || t.assignee_id===me.id || t.created_by===me.id;
+function counts(){ const c={open:0,mine:0,all:tickets.length}; tickets.forEach(t=>{ c[t.status]=(c[t.status]||0)+1; if(OPEN.includes(t.status)){ c.open++; if(mine(t)) c.mine++; } }); return c; }
+function renderFilters(){
+  const c=counts();
+  const defs=[["open","Open"],["mine",isTeam()?"Mine (open)":"My open requests"],["requested","To review"],["scheduled","Scheduled"],["completed","Awaiting sign-off"],["signed_off","Signed off"],["all","All"]];
+  $("#filters").innerHTML=defs.map(([k,l])=>`<button class="chip" aria-pressed="${filter===k}" data-f="${k}">${l}<span class="n">${c[k]||0}</span></button>`).join("");
+}
+function visible(){
+  let a=tickets.filter(t=> filter==="all"||(filter==="open"?OPEN.includes(t.status):filter==="mine"?(OPEN.includes(t.status)&&mine(t)):t.status===filter));
+  if(query){ const q=query.toLowerCase(); a=a.filter(t=>[t.number,t.area,t.location,t.drawing_no,t.drawing_rev,t.work_type,t.description,name(t.requester_id),t.assignee_id?name(t.assignee_id):""].join(" ").toLowerCase().includes(q)); }
+  return a.sort((x,y)=>(isLate(y)-isLate(x)) || ((x.priority==="urgent"?0:1)-(y.priority==="urgent"?0:1)) || String(x.scheduled_date||x.due_date).localeCompare(String(y.scheduled_date||y.due_date)));
+}
+function renderList(){
+  renderFilters(); const a=visible(), el=$("#list");
+  if(!tickets.length){ el.innerHTML=`<div class="empty"><strong>No requests yet</strong>Create the first one with “New request”.</div>`; return; }
+  if(!a.length){ el.innerHTML=`<div class="empty"><strong>Nothing here</strong>Change the filter or clear the search.</div>`; return; }
+  el.innerHTML=a.map(t=>`<button class="row ${t.priority==="urgent"?"urgent":""}" data-id="${t.id}">
+    <span class="flag" aria-hidden="true"></span>
+    <span class="main"><span class="l1"><span class="num">${esc(t.number)}</span><span class="title">${esc(t.work_type)} · ${esc(t.area)}</span></span>
+      <span class="l2">${t.location?`<span>${esc(t.location)}</span>`:""}<span>Dwg ${esc(t.drawing_no)} rev ${esc(t.drawing_rev)}</span><span>${esc(name(t.requester_id))}</span>${t.assignee_id?`<span>Surveyor: ${esc(name(t.assignee_id))}</span>`:""}</span></span>
+    <span class="side">${statusHtml(t.status)}<span class="due ${isLate(t)?"late":""}">${t.priority==="urgent"?"Urgent, ":""}${isLate(t)?"overdue ":t.scheduled_date?"planned ":"due "}${esc(fmtDate(t.scheduled_date||t.due_date))}</span></span>
+  </button>`).join("");
+}
+
+/* ================= DASHBOARD ================= */
+function bars(m){ const e=Object.entries(m).sort((a,b)=>b[1]-a[1]).slice(0,12); const mx=Math.max(1,...e.map(x=>x[1]));
+  return e.length?e.map(([k,v])=>`<div class="bar"><span>${esc(k)}</span><span class="track"><span class="fill" style="width:${(v/mx*100).toFixed(0)}%"></span></span><span class="v">${v}</span></div>`).join(""):`<p style="color:var(--muted);margin:0">No data yet.</p>`; }
+function renderDash(){
+  const c=counts(), n=tickets.length, pct=v=>n?Math.round(v/n*100)+"%":"–";
+  const done=tickets.filter(t=>t.completed_at);
+  const avg=done.length?(done.reduce((s,t)=>s+(new Date(t.completed_at)-new Date(t.created_at)),0)/done.length/864e5).toFixed(1):"–";
+  const A={},W={},R={},X={},S={};
+  tickets.forEach(t=>{ A[t.area]=(A[t.area]||0)+1; W[t.work_type]=(W[t.work_type]||0)+1; const r=name(t.requester_id); R[r]=(R[r]||0)+1;
+    if(t.reject_reason) X[t.reject_reason]=(X[t.reject_reason]||0)+1; if(t.assignee_id){ const s=name(t.assignee_id); S[s]=(S[s]||0)+1; } });
+  $("#dash").innerHTML=`
+   <div class="panel"><h2>Workload</h2>
+    <div class="kpi"><span>Open requests</span><b>${c.open}</b></div>
+    <div class="kpi"><span>Overdue</span><b class="${tickets.filter(isLate).length?"late":""}">${tickets.filter(isLate).length}</b></div>
+    <div class="kpi"><span>Awaiting sign-off</span><b>${c.completed||0}</b></div>
+    <div class="kpi"><span>Signed off</span><b>${c.signed_off||0}</b></div></div>
+   <div class="panel"><h2>How requests arrive</h2>
+    <div class="kpi"><span>Total requests</span><b>${n}</b></div>
+    <div class="kpi"><span>Flagged urgent</span><b>${pct(tickets.filter(t=>t.priority==="urgent").length)}</b></div>
+    <div class="kpi"><span>Due within 36 h of request</span><b>${pct(tickets.filter(isShort).length)}</b></div>
+    <div class="kpi"><span>Avg. days, request to done</span><b>${avg}</b></div></div>
+   <div class="panel"><h2>Rejected, by reason</h2>${bars(X)}</div>
+   <div class="panel"><h2>By requester</h2>${bars(R)}</div>
+   <div class="panel"><h2>By area</h2>${bars(A)}</div>
+   <div class="panel"><h2>By work type</h2>${bars(W)}</div>
+   <div class="panel"><h2>By surveyor</h2>${bars(S)}</div>
+   <div class="panel wide" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap"><span style="margin-right:auto;color:var(--muted)">Export every request with dates, drawing references, people and outcome.</span><button class="btn" id="csvBtn">Download CSV</button></div>`;
+  $("#csvBtn").onclick=exportCsv;
+}
+
+/* ================= USERS (admin) ================= */
+function renderUsers(){
+  const list=Object.values(profiles).sort((a,b)=>a.full_name.localeCompare(b.full_name));
+  $("#usersTable").innerHTML=`<thead><tr><th>Name</th><th>Company / role</th><th>Access</th><th>Active</th><th></th></tr></thead><tbody>${list.map(p=>`
+    <tr data-u="${p.id}"><td><input class="in" data-k="full_name" value="${esc(p.full_name)}"></td><td><input class="in" data-k="company" value="${esc(p.company)}"></td>
+    <td><select class="in" data-k="role" ${p.id===me.id?"disabled":""}>${Object.entries(ROLES).map(([k,l])=>`<option value="${k}" ${p.role===k?"selected":""}>${l}</option>`).join("")}</select></td>
+    <td><input type="checkbox" data-k="active" ${p.active?"checked":""} ${p.id===me.id?"disabled":""} aria-label="Active"></td>
+    <td><button class="btn" data-save>Save</button></td></tr>`).join("")}</tbody>`;
+  $("#usersTable").querySelectorAll("[data-save]").forEach(b=>b.onclick=async()=>{
+    const tr=b.closest("tr"), id=tr.dataset.u, v=k=>tr.querySelector(`[data-k="${k}"]`);
+    try{ await rpc("set_user_details",{p_user:id,p_full_name:v("full_name").value,p_company:v("company").value});
+      if(id!==me.id) await rpc("set_user_role",{p_user:id,p_role:v("role").value,p_active:v("active").checked});
+      await loadProfiles(); toast("User saved"); }catch(e){ toast(e.message); }
+  });
+}
+
+/* ================= DIALOGS ================= */
+const dlg=$("#dlg");
+function openDlg(html){ $("#dlgInner").innerHTML=html; if(!dlg.open) dlg.showModal(); $("#dlgInner").querySelectorAll("[data-close]").forEach(b=>b.onclick=closeDlg); }
+function closeDlg(){ openId=null; if(dlg.open) dlg.close(); }
+dlg.addEventListener("close",()=>openId=null);
+dlg.addEventListener("click",e=>{ if(e.target===dlg) closeDlg(); });
+const isDetailOpen=()=>dlg.open && document.getElementById("detailMark") && !(document.getElementById("noteIn")?.value);
+function datalist(id,field){ const v=[...new Set(tickets.map(t=>t[field]).filter(Boolean))].sort(); return `<datalist id="${id}">${v.map(x=>`<option value="${esc(x)}">`).join("")}</datalist>`; }
+const activeUsers = () => Object.values(profiles).filter(p=>p.active).sort((a,b)=>a.full_name.localeCompare(b.full_name));
+const teamUsers = () => activeUsers().filter(p=>p.role!=="requester");
+
+function formHtml(t={}, allowBehalf){
+  return `<div class="grid2">
+   ${allowBehalf?`<label class="f"><span class="req">Requested by</span><select class="in" name="on_behalf_of">${activeUsers().map(p=>`<option value="${p.id}" ${p.id===me.id?"selected":""}>${esc(p.full_name)}${p.company?", "+esc(p.company):""}</option>`).join("")}</select><span class="hint">Log a phone or verbal request for someone else.</span></label>`:""}
+   <label class="f"><span class="req">Work type</span><select class="in" name="work_type">${WORK_TYPES.map(w=>`<option ${t.work_type===w?"selected":""}>${w}</option>`).join("")}</select></label>
+   <label class="f"><span class="req">Area / structure</span><input class="in" name="area" list="dl-area" value="${esc(t.area)}" placeholder="Shaft, adit, TBM tunnel, surface…">${datalist("dl-area","area")}</label>
+   <label class="f"><span>Location detail</span><input class="in" name="location" value="${esc(t.location)}" placeholder="Station / ring / elevation / gridline"></label>
+   <label class="f"><span class="req">Drawing number</span><input class="in" name="drawing_no" list="dl-dwg" value="${esc(t.drawing_no)}">${datalist("dl-dwg","drawing_no")}</label>
+   <label class="f"><span class="req">Drawing revision</span><input class="in" name="drawing_rev" value="${esc(t.drawing_rev)}" placeholder="e.g. C"><span class="hint">The survey team works only from this revision.</span></label>
+   <label class="f"><span class="req">Needed by</span><input class="in" type="date" name="due_date" value="${esc(t.due_date||"")}" min="${today()}"></label>
+   <label class="f"><span>Priority</span><select class="in" name="priority"><option value="normal">Normal</option><option value="urgent" ${t.priority==="urgent"?"selected":""}>Urgent</option></select></label>
+   <label class="f full"><span class="req">What is needed</span><textarea class="in" name="description" placeholder="Elements to set out, offsets, marking method, access constraints…">${esc(t.description)}</textarea></label>
+  </div><div class="err" id="ferr"></div>`;
+}
+function readForm(root){ const o={}; root.querySelectorAll("[name]").forEach(el=>o[el.name]=el.type==="checkbox"?el.checked:el.value.trim()); return o; }
+function validate(o){ return ["area","drawing_no","drawing_rev","due_date","description"].some(k=>!o[k]) ? "Fill in every required field, including the drawing number and revision." : ""; }
+
+function openNew(){
+  openDlg(`<div class="dlg-head"><h2>New survey request</h2><button class="x" data-close aria-label="Close">×</button></div>
+   <div class="dlg-body" id="fbody">${formHtml({},isTeam())}</div>
+   <div class="dlg-foot"><button class="btn" data-close>Cancel</button><button class="btn primary" id="create">Submit request</button></div>`);
+  $("#create").onclick=async()=>{ const o=readForm($("#fbody")), e=validate(o); if(e) return $("#ferr").textContent=e;
+    if(o.on_behalf_of===me.id) delete o.on_behalf_of;
+    $("#create").disabled=true;
+    try{ const t=await rpc("create_ticket",{p:o}); closeDlg(); toast(`Request ${t.number} submitted`); await loadTickets(); refresh(); }
+    catch(err){ $("#create").disabled=false; $("#ferr").textContent=err.message; } };
+}
+
+function actionsFor(t){
+  const team=isTeam(), own=t.requester_id===me.id||me.role==="admin", a=[];
+  const add=(k,l,c="")=>a.push([k,l,c]);
+  switch(t.status){
+    case "requested": if(team){add("accept","Accept","primary");add("schedule","Accept & schedule");add("info","Ask for info");add("reject","Reject","danger");} if(own||team) add("cancel","Cancel request","danger"); break;
+    case "info_needed": if(own||team) {add("edit","Update & resubmit","primary");add("cancel","Cancel request","danger");} break;
+    case "accepted": if(team){add("schedule","Schedule","primary");add("info","Ask for info");add("reject","Reject","danger");} if(own||team) add("cancel","Cancel request","danger"); break;
+    case "scheduled": if(team){add("done","Mark as done","primary");add("schedule","Reschedule");} if(own||team) add("cancel","Cancel request","danger"); break;
+    case "completed": if(own||team){add("signoff","Sign off","primary");add("issue","Report an issue","danger");} break;
+  }
+  return a;
+}
+
+async function openDetail(id){
+  openId=id; const t=tickets.find(x=>x.id===id); if(!t) return closeDlg();
+  const {data:ev}=await sb.from("ticket_events").select("*").eq("ticket_id",id).order("at");
+  if(openId!==id) return;
+  const acts=actionsFor(t), c=t.completion, s=t.signoff;
+  openDlg(`<span id="detailMark" hidden></span><div class="dlg-head"><h2>${esc(t.number)}</h2>${statusHtml(t.status)}<button class="x" data-close aria-label="Close">×</button></div>
+  <div class="dlg-body">
+   <dl class="facts">
+    <dt>Work type</dt><dd>${esc(t.work_type)}${t.priority==="urgent"?' <b style="color:var(--flag)">Urgent</b>':""}</dd>
+    <dt>Area</dt><dd>${esc(t.area)}${t.location?", "+esc(t.location):""}</dd>
+    <dt>Drawing</dt><dd>${esc(t.drawing_no)} rev ${esc(t.drawing_rev)}</dd>
+    <dt>Requested by</dt><dd>${esc(person(t.requester_id))}, ${esc(fmtDT(t.created_at))}${t.created_by!==t.requester_id?` <span style="color:var(--muted)">(logged by ${esc(name(t.created_by))})</span>`:""}</dd>
+    <dt>Needed by</dt><dd class="${isLate(t)?"late":""}">${esc(fmtDate(t.due_date))}${isShort(t)?" (short notice)":""}</dd>
+    ${t.scheduled_date?`<dt>Scheduled</dt><dd>${esc(fmtDate(t.scheduled_date))}, ${esc(name(t.assignee_id))}</dd>`:""}
+    <dt>Description</dt><dd style="white-space:pre-wrap">${esc(t.description)}</dd>
+    ${t.status==="info_needed"?`<dt>Info requested</dt><dd style="white-space:pre-wrap">${esc(t.info_request)}</dd>`:""}
+    ${t.reject_reason?`<dt>Rejected</dt><dd>${esc(t.reject_reason)}${t.reject_note?": "+esc(t.reject_note):""}</dd>`:""}
+   </dl>
+   ${c?`<div class="sec">Survey result</div><dl class="facts"><dt>Done</dt><dd>${esc(fmtDT(t.completed_at))} by ${esc(name(c.by))}</dd>
+     <dt>Points</dt><dd>${esc(c.points)}</dd><dt>Data file / job</dt><dd>${esc(c.fileRef||"–")}</dd><dt>Tolerance check</dt><dd>${esc(c.tolerance)}</dd>
+     ${c.notes?`<dt>Notes</dt><dd style="white-space:pre-wrap">${esc(c.notes)}</dd>`:""}</dl>`:""}
+   ${s?`<div class="sec">Sign-off</div><dl class="facts"><dt>Accepted by</dt><dd>${esc(s.name)}${s.company?", "+esc(s.company):""}</dd><dt>Date</dt><dd>${esc(fmtDT(s.at))}</dd>
+     ${s.by!==t.requester_id?`<dt>Captured on</dt><dd>${esc(name(s.by))}'s account</dd>`:""}${s.comments?`<dt>Comments</dt><dd>${esc(s.comments)}</dd>`:""}</dl>
+     <img class="sigimg" alt="Signature of ${esc(s.name)}" src="${esc(s.sig)}">`:""}
+   <div class="sec">History</div>
+   <ul class="hist">${(ev||[]).map(h=>`<li><time>${esc(fmtDT(h.at))}</time><span><b>${esc(h.action)}</b> by ${esc(name(h.by))}${h.note?": "+esc(h.note):""}</span></li>`).join("")}</ul>
+   <div class="sec">Add a note</div><div style="display:flex;gap:8px"><input class="in" id="noteIn" placeholder="Phone call, site remark, change…"><button class="btn" id="noteBtn">Add note</button></div>
+  </div>
+  <div class="dlg-foot"><button class="btn" id="pdfBtn" style="margin-right:auto">Download PDF</button>${acts.map(([k,l,cl])=>`<button class="btn ${cl}" data-act="${k}">${l}</button>`).join("")}</div>`);
+  $("#pdfBtn").onclick=()=>exportPdf(t,ev||[]);
+  $("#noteBtn").onclick=()=>{ const v=$("#noteIn").value.trim(); if(v){ $("#noteIn").value=""; act(t,"note",{note:v}); } };
+  document.querySelectorAll("[data-act]").forEach(b=>b.onclick=()=>doAction(t,b.dataset.act));
+}
+
+async function act(t,action,p={}){
+  try{ await rpc("ticket_action",{p_id:t.id,p_action:action,p}); await loadTickets(); refresh(); toast(`${t.number} updated`); openDetail(t.id); }
+  catch(e){ const el=$("#serr")||$("#ferr"); if(el) el.textContent=e.message; else toast(e.message); }
+}
+function stepDlg(t,title,body,btn,onOk,cls="primary"){
+  openDlg(`<div class="dlg-head"><h2>${esc(title)}</h2><button class="x" data-close aria-label="Close">×</button></div>
+   <div class="dlg-body stack" id="sbody"><p style="margin:0;color:var(--muted)">${esc(t.number)} · ${esc(t.work_type)} · ${esc(t.area)}</p>${body}<div class="err" id="serr"></div></div>
+   <div class="dlg-foot"><button class="btn" id="back">Back</button><button class="btn ${cls}" id="ok">${esc(btn)}</button></div>`);
+  $("#back").onclick=()=>openDetail(t.id);
+  $("#ok").onclick=async()=>{ $("#serr").textContent=""; const e=await onOk(readForm($("#sbody"))); if(e) $("#serr").textContent=e; };
+}
+function doAction(t,a){
+  if(a==="accept") return act(t,"accept");
+  if(a==="schedule") return stepDlg(t,t.status==="scheduled"?"Reschedule":"Schedule the survey",`<div class="grid2">
+     <label class="f"><span class="req">Survey date</span><input class="in" type="date" name="scheduled_date" value="${esc(t.scheduled_date||t.due_date)}"></label>
+     <label class="f"><span class="req">Surveyor</span><select class="in" name="assignee_id">${teamUsers().map(p=>`<option value="${p.id}" ${(t.assignee_id||me.id)===p.id?"selected":""}>${esc(p.full_name)}</option>`).join("")}</select></label>
+     <label class="f full"><span>Note</span><input class="in" name="note" placeholder="Optional"></label></div>`,
+   "Save schedule", o=>{ if(!o.scheduled_date) return "Set a date."; return act(t,"schedule",o); });
+  if(a==="info") return stepDlg(t,"Ask for information",`<label class="f"><span class="req">What is missing</span><textarea class="in" name="note" placeholder="Which offsets, which revision, access time…"></textarea></label>`,
+   "Send back to requester", o=> o.note? act(t,"info",o) : "Say what is missing.");
+  if(a==="reject") return stepDlg(t,"Reject the request",`<label class="f"><span class="req">Reason</span><select class="in" name="reject_reason">${REJECT_REASONS.map(r=>`<option>${r}</option>`).join("")}</select></label><label class="f"><span>Details</span><textarea class="in" name="note"></textarea></label>`,
+   "Reject request", o=>act(t,"reject",o),"danger");
+  if(a==="cancel") return stepDlg(t,"Cancel the request",`<label class="f"><span>Reason</span><textarea class="in" name="note"></textarea></label>`,"Cancel request",o=>act(t,"cancel",o),"danger");
+  if(a==="issue") return stepDlg(t,"Report an issue",`<label class="f"><span class="req">What is wrong</span><textarea class="in" name="note"></textarea></label>`,"Send back to survey team",o=>o.note?act(t,"issue",o):"Describe the issue.","danger");
+  if(a==="done") return stepDlg(t,"Record the survey",`<div class="grid2">
+     <label class="f"><span class="req">Points set / measured</span><input class="in" name="points" inputmode="numeric" placeholder="e.g. 12"></label>
+     <label class="f"><span>Data file or job name</span><input class="in" name="fileRef"></label>
+     <label class="f"><span class="req">Tolerance check</span><select class="in" name="tolerance"><option>All within tolerance</option><option>Deviations noted</option><option>Not applicable</option></select></label>
+     <label class="f full"><span>Notes and deviations</span><textarea class="in" name="notes" placeholder="Marks used, offsets, points not set and why, as-built deviations…"></textarea></label></div>`,
+   "Save as done", o=> o.points? act(t,"done",{completion:o}) : "Enter the number of points.");
+  if(a==="edit"){
+    openDlg(`<div class="dlg-head"><h2>Update ${esc(t.number)}</h2><button class="x" data-close aria-label="Close">×</button></div>
+     <div class="dlg-body" id="fbody"><div class="notice" style="margin-top:0">Survey team asked: ${esc(t.info_request)}</div>${formHtml(t,false)}</div>
+     <div class="dlg-foot"><button class="btn" id="back">Back</button><button class="btn primary" id="save">Resubmit request</button></div>`);
+    $("#back").onclick=()=>openDetail(t.id);
+    $("#save").onclick=()=>{ const o=readForm($("#fbody")), e=validate(o); if(e) return $("#ferr").textContent=e; act(t,"resubmit",o); };
+    return;
+  }
+  if(a==="signoff"){
+    const rq=profiles[t.requester_id]||{};
+    stepDlg(t,"Sign off the survey",`<div class="grid2">
+      <label class="f"><span class="req">Name of person signing</span><input class="in" name="name" value="${esc(rq.full_name)}"></label>
+      <label class="f"><span>Company / role</span><input class="in" name="company" value="${esc(rq.company)}"></label>
+      <label class="f full"><span>Comments</span><input class="in" name="comments"></label></div>
+      <div><div style="display:flex;justify-content:space-between;align-items:baseline"><span class="req" style="font:600 .95rem var(--font-ui)">Signature</span><button class="btn" type="button" id="clr" style="padding:2px 10px">Clear</button></div>
+      <canvas class="sigbox" id="sig" aria-label="Signature pad"></canvas></div>
+      <p style="margin:0;color:var(--muted);font-size:.9rem">By signing, you accept the survey marks as set out from drawing ${esc(t.drawing_no)} rev ${esc(t.drawing_rev)}.</p>`,
+     "Sign off", o=>{ if(!o.name) return "Enter the name of the person signing."; if(!sig.dirty) return "Sign in the box."; return act(t,"signoff",{signoff:{...o,sig:sig.data()}}); });
+    const sig=pad($("#sig")); $("#clr").onclick=()=>sig.clear();
+  }
+}
+function pad(cv){
+  const ctx=cv.getContext("2d"); let drawing=false, dirty=false;
+  const size=()=>{ const r=cv.getBoundingClientRect(); cv.width=Math.round(r.width*2); cv.height=Math.round(r.height*2); ctx.setTransform(2,0,0,2,0,0); ctx.lineWidth=2.2; ctx.lineCap="round"; ctx.lineJoin="round"; ctx.strokeStyle="#111"; };
+  requestAnimationFrame(size);
+  const pos=e=>{ const r=cv.getBoundingClientRect(); return [e.clientX-r.left,e.clientY-r.top]; };
+  cv.onpointerdown=e=>{ drawing=dirty=true; cv.setPointerCapture(e.pointerId); const [x,y]=pos(e); ctx.beginPath(); ctx.moveTo(x,y); };
+  cv.onpointermove=e=>{ if(!drawing) return; const [x,y]=pos(e); ctx.lineTo(x,y); ctx.stroke(); };
+  cv.onpointerup=cv.onpointercancel=()=>drawing=false;
+  return { get dirty(){return dirty;}, clear(){ ctx.clearRect(0,0,cv.width,cv.height); dirty=false; },
+    data(){ const o=document.createElement("canvas"); o.width=600; o.height=Math.round(600*cv.height/cv.width); const c=o.getContext("2d"); c.fillStyle="#fff"; c.fillRect(0,0,o.width,o.height); c.drawImage(cv,0,0,o.width,o.height); return o.toDataURL("image/png"); } };
+}
+
+/* ================= EXPORTS ================= */
+function download(filename,blob){ const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=filename; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},1000); }
+function exportCsv(){
+  const cols=["Number","Status","Priority","Work type","Area","Location","Drawing","Rev","Requester","Created","Needed by","Scheduled","Surveyor","Done","Points","Tolerance","Signed by","Signed on","Reject reason"];
+  const q=v=>`"${String(v??"").replace(/"/g,'""')}"`;
+  const rows=tickets.map(t=>[t.number,STATUS[t.status].label,t.priority,t.work_type,t.area,t.location,t.drawing_no,t.drawing_rev,name(t.requester_id),t.created_at,t.due_date,t.scheduled_date,t.assignee_id?name(t.assignee_id):"",t.completed_at,t.completion?.points,t.completion?.tolerance,t.signoff?.name,t.signoff?.at,t.reject_reason].map(q).join(","));
+  download(`survey-requests-${today()}.csv`,new Blob(["\ufeff"+[cols.map(q).join(","),...rows].join("\n")],{type:"text/csv"}));
+}
+function exportPdf(t,ev){
+  if(!window.jspdf) return toast("The PDF tool did not load. Check your connection.");
+  const d=new window.jspdf.jsPDF({unit:"mm",format:"letter"}), W=215.9, M=16; let y=18;
+  d.setFillColor(224,21,122); d.rect(M,y-6,3,14,"F");
+  d.setFont("helvetica","bold"); d.setFontSize(16); d.text("Survey Request Record",M+7,y);
+  d.setFont("helvetica","normal"); d.setFontSize(10); d.text(CFG.PROJECT_NAME,M+7,y+6);
+  d.setFont("helvetica","bold"); d.setFontSize(14); d.text(t.number,W-M,y,{align:"right"});
+  d.setFont("helvetica","normal"); d.setFontSize(10); d.text(STATUS[t.status].label,W-M,y+6,{align:"right"}); y+=18;
+  const sec=s=>{ if(y>250){d.addPage();y=18;} d.setDrawColor(200); d.line(M,y,W-M,y); y+=6; d.setFont("helvetica","bold"); d.setFontSize(11); d.setTextColor(20); d.text(s,M,y); y+=6; d.setFont("helvetica","normal"); d.setFontSize(10); };
+  const row=(k,v)=>{ if(v==null||v==="") return; const l=d.splitTextToSize(String(v),W-2*M-48); if(y+l.length*5>265){d.addPage();y=18;} d.setTextColor(90); d.text(k,M,y); d.setTextColor(20); d.text(l,M+48,y); y+=l.length*5+1.5; };
+  sec("Request"); row("Work type",t.work_type+(t.priority==="urgent"?"  (URGENT)":"")); row("Area",t.area); row("Location",t.location);
+  row("Drawing",`${t.drawing_no} rev ${t.drawing_rev}`); row("Requested by",person(t.requester_id)); row("Requested on",fmtDT(t.created_at));
+  row("Needed by",fmtDate(t.due_date)+(isShort(t)?" (short notice)":"")); row("Description",t.description);
+  if(t.scheduled_date){ sec("Schedule"); row("Survey date",fmtDate(t.scheduled_date)); row("Surveyor",name(t.assignee_id)); }
+  if(t.reject_reason){ sec("Rejection"); row("Reason",t.reject_reason); row("Details",t.reject_note); }
+  if(t.completion){ const c=t.completion; sec("Survey result"); row("Done on",fmtDT(t.completed_at)); row("Surveyor",name(c.by)); row("Points",c.points); row("Data file / job",c.fileRef); row("Tolerance check",c.tolerance); row("Notes",c.notes); }
+  if(t.signoff){ const s=t.signoff; sec("Sign-off"); row("Accepted by",s.name+(s.company?", "+s.company:"")); row("Date",fmtDT(s.at)); row("Comments",s.comments);
+    if(s.sig){ if(y>225){d.addPage();y=18;} try{ d.addImage(s.sig,"PNG",M+48,y,60,20); y+=24; }catch(_){} } }
+  sec("History"); ev.forEach(h=>row(fmtDT(h.at),`${h.action} by ${name(h.by)}${h.note?": "+h.note:""}`));
+  d.setFontSize(8); d.setTextColor(120); const n=d.getNumberOfPages();
+  for(let i=1;i<=n;i++){ d.setPage(i); d.text(`${t.number}   generated ${new Date().toLocaleString("en-US")} by ${me.full_name}   page ${i}/${n}`,M,272); }
+  download(`${t.number}.pdf`, d.output("blob"));
+}
+
+/* ================= WIRING ================= */
+document.querySelectorAll(".tab").forEach(b=>b.onclick=()=>{
+  document.querySelectorAll(".tab").forEach(x=>x.setAttribute("aria-selected",x===b));
+  ["list","dash","users"].forEach(v=>$("#view-"+v).hidden = b.dataset.view!==v);
+  if(b.dataset.view==="dash") renderDash(); if(b.dataset.view==="users") renderUsers();
+});
+$("#filters").onclick=e=>{ const c=e.target.closest("[data-f]"); if(c){ filter=c.dataset.f; renderList(); } };
+$("#search").oninput=e=>{ query=e.target.value.trim(); renderList(); };
+$("#list").onclick=e=>{ const r=e.target.closest("[data-id]"); if(r) openDetail(r.dataset.id); };
+$("#newBtn").onclick=openNew;
+$("#meBtn").onclick=e=>{ e.stopPropagation(); $("#menu").hidden=!$("#menu").hidden; };
+document.addEventListener("click",e=>{ if(!e.target.closest("#menu")) $("#menu").hidden=true; });
+$("#logoutBtn").onclick=()=>sb.auth.signOut();
+$("#profileBtn").onclick=()=>{
+  openDlg(`<div class="dlg-head"><h2>My profile</h2><button class="x" data-close aria-label="Close">×</button></div>
+   <div class="dlg-body stack"><label class="f"><span class="req">Full name</span><input class="in" id="fn" value="${esc(me.full_name)}"></label>
+   <label class="f"><span>Company / role</span><input class="in" id="co" value="${esc(me.company)}"></label><p style="margin:0;color:var(--muted)">Access level: ${ROLES[me.role]}</p><div class="err" id="serr"></div></div>
+   <div class="dlg-foot"><button class="btn" data-close>Cancel</button><button class="btn primary" id="ok">Save profile</button></div>`);
+  $("#ok").onclick=async()=>{ try{ await rpc("update_my_profile",{p_full_name:$("#fn").value,p_company:$("#co").value}); await loadProfiles(); me=profiles[me.id]; paintMe(); closeDlg(); toast("Profile saved"); }catch(e){ $("#serr").textContent=e.message; } };
+};
+$("#pwBtn").onclick=()=>{
+  openDlg(`<div class="dlg-head"><h2>Change password</h2><button class="x" data-close aria-label="Close">×</button></div>
+   <div class="dlg-body stack"><label class="f"><span class="req">New password</span><input class="in" id="p1" type="password" autocomplete="new-password"></label>
+   <label class="f"><span class="req">Repeat password</span><input class="in" id="p2" type="password" autocomplete="new-password"></label><div class="err" id="serr"></div></div>
+   <div class="dlg-foot"><button class="btn" data-close>Cancel</button><button class="btn primary" id="ok">Save password</button></div>`);
+  $("#ok").onclick=async()=>{ const a=$("#p1").value,b=$("#p2").value; if(a.length<8) return $("#serr").textContent="Use at least 8 characters."; if(a!==b) return $("#serr").textContent="The two passwords differ.";
+    const {error}=await sb.auth.updateUser({password:a}); if(error) return $("#serr").textContent=error.message; closeDlg(); toast("Password changed"); };
+};
+
+if("serviceWorker" in navigator && location.protocol==="https:") navigator.serviceWorker.register("sw.js").catch(()=>{});
+})();
+</script>
+</body>
+</html>
